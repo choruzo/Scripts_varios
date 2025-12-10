@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESXi OVA Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🖥️ ESXi OVA Downloader</h1>
+            <p class="subtitle">Descarga máquinas virtuales como archivos OVA desde vCenter</p>
+        </header>
+
+        <!-- Connection Panel -->
+        <div class="panel" id="connectionPanel">
+            <h2>🔌 Conexión a vCenter</h2>
+            <form id="connectionForm">
+                <div class="form-group">
+                    <label for="vcenterHost">Host vCenter:</label>
+                    <input type="text" id="vcenterHost" placeholder="vcenter.ejemplo.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="username">Usuario:</label>
+                    <input type="text" id="username" placeholder="administrator@vsphere.local" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary" id="connectBtn">
+                        Conectar
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="disconnectBtn" style="display: none;">
+                        Desconectar
+                    </button>
+                </div>
+            </form>
+            <div id="connectionStatus" class="status-message"></div>
+        </div>
+
+        <!-- VM List Panel -->
+        <div class="panel" id="vmPanel" style="display: none;">
+            <h2>📋 Máquinas Virtuales Disponibles</h2>
+            
+            <!-- Filters -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="filterHost">Host:</label>
+                    <select id="filterHost">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterCluster">Cluster:</label>
+                    <select id="filterCluster">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterPowerState">Estado:</label>
+                    <select id="filterPowerState">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterFolder">Folder:</label>
+                    <select id="filterFolder">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary btn-small" id="refreshBtn">🔄 Actualizar</button>
+            </div>
+
+            <!-- VM Table -->
+            <div class="table-container">
+                <table id="vmTable">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Host</th>
+                            <th>Cluster</th>
+                            <th>Folder</th>
+                            <th>CPU</th>
+                            <th>RAM (GB)</th>
+                            <th>Disco (GB)</th>
+                            <th>SO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vmTableBody">
+                        <!-- VM rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="vm-actions">
+                <div class="selection-info">
+                    <span id="selectionCount">0 VMs seleccionadas</span>
+                </div>
+                <div class="button-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="poweroffBeforeExport" checked>
+                        Apagar VMs antes de exportar
+                    </label>
+                    <button class="btn btn-primary" id="exportBtn" disabled>
+                        ⬇️ Descargar Seleccionadas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Queue Panel -->
+        <div class="panel" id="queuePanel" style="display: none;">
+            <h2>📦 Cola de Descargas</h2>
+            
+            <div id="currentDownload" style="display: none;">
+                <h3>Descarga Actual</h3>
+                <div class="download-item current">
+                    <div class="download-info">
+                        <span class="vm-name" id="currentVmName"></span>
+                        <span class="download-status" id="currentStatus"></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="currentProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text" id="currentProgressText">0%</div>
+                    <div class="download-message" id="currentMessage"></div>
+                </div>
+            </div>
+
+            <div id="queueList" style="display: none;">
+                <h3>En Cola (<span id="queueCount">0</span>)</h3>
+                <div id="queueItems"></div>
+            </div>
+
+            <div id="historyList" style="display: none;">
+                <h3>Historial Reciente</h3>
+                <div id="historyItems"></div>
+            </div>
+
+            <div class="button-group" style="margin-top: 20px;">
+                <button class="btn btn-danger" id="cancelBtn">
+                    ❌ Cancelar Descargas
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>ESXi OVA Downloader v1.0 | Desarrollado para automatización de backups de VMs</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "download_directory": "./downloads",
+  "timeout": 300,
+  "verify_ssl": false,
+  "chunk_size_mb": 1,
+  "max_concurrent_downloads": 1,
+  "comments": {
+    "download_directory": "Directorio donde se guardarán los archivos OVA descargados",
+    "timeout": "Timeout en segundos para operaciones de vCenter (300 = 5 minutos)",
+    "verify_ssl": "Verificar certificados SSL (false para certificados autofirmados)",
+    "chunk_size_mb": "Tamaño de chunk para descargas en MB",
+    "max_concurrent_downloads": "Máximo de descargas simultáneas (recomendado: 1 para descarga secuencial)"
+  }
+}
