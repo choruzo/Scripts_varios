@@ -1,275 +1,301 @@
 import sys
 
+ANIO_EJERCICIO = 2026
+
+# ─── HELPERS DE ENTRADA ────────────────────────────────────────────────────────
+
 def input_numero(mensaje):
-    """Solicita un número (float) al usuario."""
     while True:
         try:
-            val = input(mensaje)
+            val = input(f"  {mensaje} ").strip()
             return float(val.replace(',', '.'))
         except ValueError:
-            print("Por favor, introduce un número válido.")
+            print("  ! Por favor, introduce un número válido (usa , o . como decimal).")
 
 def input_si_no(mensaje):
-    """Solicita una respuesta S/N."""
     while True:
-        val = input(mensaje + " (S/N): ").strip().upper()
+        val = input(f"  {mensaje} (S/N): ").strip().upper()
         if val in ['S', 'N']:
             return val
-        print("Por favor, responde 'S' para Sí o 'N' para No.")
+        print("  ! Responde S o N.")
 
-def input_int(mensaje):
-    """Solicita un número entero."""
+def input_int(mensaje, minimo=0, maximo=999):
     while True:
         try:
-            val = input(mensaje)
-            return int(val)
+            val = int(input(f"  {mensaje} ").strip())
+            if minimo <= val <= maximo:
+                return val
+            print(f"  ! Valor fuera de rango ({minimo}-{maximo}).")
         except ValueError:
-            print("Por favor, introduce un número entero.")
+            print("  ! Por favor, introduce un número entero.")
 
-def redondear(numero):
-    """Redondeo a 2 decimales según normativa euro."""
-    return round(numero, 2)
+def input_opcion(mensaje, opciones):
+    while True:
+        val = input(f"  {mensaje} ").strip().upper()
+        if val in opciones:
+            return val
+        print(f"  ! Opción no válida. Elige entre: {', '.join(opciones)}")
 
-def truncar(numero):
-    """Trunca a 2 decimales sin redondear (usado para el tipo de retención)."""
-    return int(numero * 100) / 100.0
+def seccion(titulo):
+    print(f"\n{'─'*56}")
+    print(f"  {titulo}")
+    print(f"{'─'*56}")
 
-# --- TABLAS Y CONSTANTES (SEGÚN DOCUMENTO PDF PAG 30) ---
+def linea(texto, valor, signo=""):
+    etiqueta = f"{texto}:"
+    print(f"  {etiqueta:<32} {signo}{valor:>12}")
+
+# ─── TABLAS Y CONSTANTES (Algoritmo AEAT 2026, pág. 30) ───────────────────────
+
 ESCALA_RETENCION = [
-    (0.00, 0.00, 19.00),         # Hasta 12.450 (tramo 1 implícito)
-    (12450.00, 2365.50, 24.00),  # De 12.450 a 20.200
-    (20200.00, 4225.50, 30.00),  # De 20.200 a 35.200
-    (35200.00, 8725.50, 37.00),  # De 35.200 a 60.000
-    (60000.00, 17901.50, 45.00), # De 60.000 a 300.000
-    (300000.00, 125901.50, 47.00)# De 300.000 en adelante
+    (0.00,       0.00,      19.00),   # Hasta 12.450
+    (12450.00,   2365.50,   24.00),   # De 12.450 a 20.200
+    (20200.00,   4225.50,   30.00),   # De 20.200 a 35.200
+    (35200.00,   8725.50,   37.00),   # De 35.200 a 60.000
+    (60000.00,   17901.50,  45.00),   # De 60.000 a 300.000
+    (300000.00,  125901.50, 47.00),   # Desde 300.000
 ]
 
-# --- LÓGICA DE CÁLCULO ---
+# ─── CÁLCULO ───────────────────────────────────────────────────────────────────
+
+def redondear(n):
+    return round(n, 2)
+
+def truncar(n):
+    return int(n * 100) / 100.0
 
 def calcular_escala(base):
-    """Función ESCALA (BASE...) descrita en Página 30 - Tabla 2"""
-    cuota = 0.0
-    resto = 0.0
-    
-    # Encontrar el tramo
-    tramo_actual = None
     for i in range(len(ESCALA_RETENCION) - 1, -1, -1):
         if base >= ESCALA_RETENCION[i][0]:
-            tramo_actual = ESCALA_RETENCION[i]
-            break
-            
-    if tramo_actual:
-        limite_inferior, cuota_base, porcentaje = tramo_actual
-        resto = base - limite_inferior
-        cuota = cuota_base + (resto * (porcentaje / 100.0))
-        
-    return cuota
+            limite, cuota_base, pct = ESCALA_RETENCION[i]
+            return cuota_base + (base - limite) * (pct / 100.0)
+    return 0.0
+
+# ─── PROGRAMA PRINCIPAL ────────────────────────────────────────────────────────
 
 def main():
-    print("##########################################################")
-    print("#   CALCULADORA DE RETENCIÓN IRPF Y SALARIO NETO 2025    #")
-    print("#   Basado en el Algoritmo Oficial de la AEAT (Nov 2025) #")
-    print("##########################################################\n")
+    print()
+    print("╔══════════════════════════════════════════════════════╗")
+    print("║   CALCULADORA DE RETENCIÓN IRPF Y SALARIO NETO 2026  ║")
+    print("║   Algoritmo Oficial AEAT · Ejercicio 2026             ║")
+    print("╚══════════════════════════════════════════════════════╝")
 
-    # 1. DATOS DE ENTRADA (Páginas 5 y 40)
-    print("--- DATOS ECONÓMICOS ---")
-    retribuciones_totales = input_numero("Introduce tu Salario Bruto Anual Total (RETRIB): ")
-    
-    # Gastos deducibles: Seguridad Social
-    print("\nNecesitamos estimar tus gastos de Seguridad Social (Cotizaciones).")
-    print("Si lo sabes exacto, introdúcelo. Si no, pon 0 y estimaremos un 6.35% estándar.")
-    ss_input = input_numero("Gastos de Seguridad Social anuales (pon 0 para estimar): ")
-    
+    # ── 1. DATOS ECONÓMICOS ───────────────────────────────────────────────────
+    seccion("1. DATOS ECONÓMICOS")
+
+    retribuciones_totales = input_numero("Salario bruto anual total (€):")
+
+    print()
+    print("  Cotizaciones a la Seguridad Social:")
+    print("  · Si las conoces, introdúcelas directamente.")
+    print("  · Si no, escribe 0 y se estimará el 6,35% estándar.")
+    ss_input = input_numero("Cotizaciones S.S. anuales (€, o 0 para estimar):")
+
     if ss_input == 0:
         gastos_ss = retribuciones_totales * 0.0635
-        print(f"   -> Seguridad Social estimada: {gastos_ss:.2f} €")
+        print(f"  → Cotizaciones estimadas al 6,35%: {gastos_ss:,.2f} €")
     else:
         gastos_ss = ss_input
 
-    # 2. SITUACIÓN FAMILIAR (Página 39)
-    print("\n--- SITUACIÓN FAMILIAR (SITUFAM) ---")
-    print("1. Soltero/Viudo/Divorciado CON hijos menores de 18 (o discapacitados) y SIN convivir con la otra parte.")
-    print("2. Casado y no separado, cuyo cónyuge obtiene rentas < 1.500€ anuales.")
-    print("3. Otros (Solteros sin hijos, Casados con cónyuge que trabaja, etc.) - Opción más común.")
-    
-    situacion = 0
-    while situacion not in [1, 2, 3]:
-        situacion = input_int("Elige tu situación (1, 2 o 3): ")
+    # ── 2. DATOS PERSONALES ───────────────────────────────────────────────────
+    seccion("2. DATOS PERSONALES")
 
-    # Datos adicionales hijos
-    num_hijos = 0
-    hijos_menores_3 = 0
-    
-    if situacion == 1 or situacion == 3: # En sit 2 también puede haber hijos, pero pedimos siempre
-       tiene_hijos = input_si_no("¿Tienes descendientes (hijos) menores de 25 años o con discapacidad?")
-       if tiene_hijos == 'S':
-           num_hijos = input_int("¿Cuántos hijos en total?: ")
-           if num_hijos > 0:
-               hijos_menores_3 = input_int(f"De esos {num_hijos}, ¿cuántos son menores de 3 años?: ")
+    anio_nacimiento = input_int(
+        f"Año de nacimiento (entre 1926 y {ANIO_EJERCICIO}):",
+        minimo=1926, maximo=ANIO_EJERCICIO
+    )
+    edad = ANIO_EJERCICIO - anio_nacimiento
 
-    # Ascendientes (Simplificado para el script)
-    ascendientes_mayores_65 = 0
-    convive_ascendientes = input_si_no("¿Convives con ascendientes (padres/abuelos) mayores de 65 años a tu cargo?")
-    if convive_ascendientes == 'S':
-        ascendientes_mayores_65 = input_int("¿Cuántos ascendientes mayores de 65 años?: ")
+    # Mínimo del contribuyente según edad (pág. 24)
+    min_per   = 5550.00
+    per_65    = 1150.00 if edad > 64 else 0.00   # +65PER
+    per_75    = 1400.00 if edad > 74 else 0.00   # +75PER
+    min_con   = min_per + per_65 + per_75
 
-    # Contrato (Página 33 y 36 para límites mínimos)
-    print("\n--- TIPO DE CONTRATO ---")
-    print("G. General (Indefinido)")
-    print("T. Temporal inferior a 1 año")
-    tipo_contrato = input("Tipo de contrato (G/T): ").strip().upper()
+    tramo_edad = "menor de 65 años"
+    if edad > 74:
+        tramo_edad = "mayor de 75 años"
+    elif edad > 64:
+        tramo_edad = "entre 65 y 74 años"
+    print(f"  → Edad calculada: {edad} años ({tramo_edad})")
+    print(f"  → Mínimo personal del contribuyente: {min_con:,.2f} €")
 
-    # 3. CÁLCULO DE GASTOS DEDUCIBLES (Página 22)
+    # ── 3. SITUACIÓN FAMILIAR ─────────────────────────────────────────────────
+    seccion("3. SITUACIÓN FAMILIAR")
+
+    print("  1. Monoparental: soltero/viudo/divorciado CON hijos a cargo")
+    print("     y sin convivir con la otra parte progenitora.")
+    print("  2. Casado/a con cónyuge sin ingresos (< 1.500 €/año).")
+    print("  3. Resto de situaciones (la más habitual).")
+    print()
+    situacion = input_int("Situación familiar (1, 2 o 3):", minimo=1, maximo=3)
+
+    # Hijos (aplica a todas las situaciones)
+    num_hijos    = 0
+    hijos_men_3  = 0
+
+    tiene_hijos = input_si_no("¿Tienes hijos/descendientes menores de 25 años (o con discapacidad) a cargo?")
+    if tiene_hijos == 'S':
+        num_hijos   = input_int("Número total de hijos:", minimo=1, maximo=16)
+        hijos_men_3 = input_int(
+            f"De esos {num_hijos}, ¿cuántos son menores de 3 años?:",
+            minimo=0, maximo=num_hijos
+        )
+
+    # Ascendientes
+    asc_65_74 = 0
+    asc_75    = 0
+    tiene_asc = input_si_no("¿Convives con ascendientes (padres/abuelos) mayores de 65 años a tu cargo?")
+    if tiene_asc == 'S':
+        asc_65_74 = input_int("  · ¿Cuántos tienen entre 65 y 74 años?:", minimo=0, maximo=6)
+        asc_75    = input_int("  · ¿Cuántos tienen 75 años o más?:",       minimo=0, maximo=6)
+
+    # ── 4. TIPO DE CONTRATO ───────────────────────────────────────────────────
+    seccion("4. TIPO DE CONTRATO")
+
+    print("  G. General / indefinido")
+    print("  T. Temporal (duración inferior a 1 año)")
+    tipo_contrato = input_opcion("Tipo de contrato (G/T):", ["G", "T"])
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  CÁLCULO SEGÚN ALGORITMO AEAT 2026
+    # ═════════════════════════════════════════════════════════════════════════
+
+    # Gastos deducibles (pág. 22)
     gastos_generales = 2000.00
-    otros_gastos = gastos_generales # Aquí se podrían sumar incrementos por movilidad o discapacidad
-    
-    # Límite de gastos (Página 22: Si OTROSGASTOS > RETRIB - COTIZACIONES...)
-    rendimiento_neto_previo = retribuciones_totales - gastos_ss
-    if otros_gastos > rendimiento_neto_previo:
-        otros_gastos = rendimiento_neto_previo
-        if otros_gastos < 0: otros_gastos = 0
-        
-    gastos_totales = gastos_ss + otros_gastos
-    
-    # 4. RENDIMIENTO NETO DEL TRABAJO (RNT) (Página 22)
-    # Asumimos IRREGULAR1 y 2 en 0 para simplificar
-    rnt = retribuciones_totales - gastos_ss
-    if rnt < 0: rnt = 0
+    otros_gastos = gastos_generales
+    rend_previo = retribuciones_totales - gastos_ss
+    if otros_gastos > rend_previo:
+        otros_gastos = max(rend_previo, 0.0)
 
-    # 5. REDUCCIÓN ART 20 LIRPF (Página 23 - Algoritmo complejo)
-    # Se aplica sobre el RNT (Bruto - SS)
-    red20 = 0.0
-    
+    # RNT (pág. 22): RETRIB − COTIZACIONES  (asumimos IRREGULAR1/2 = 0)
+    rnt = max(retribuciones_totales - gastos_ss, 0.0)
+
+    # RED20 (pág. 23 — art. 20 LIRPF / RD-Ley 4/2024)
     if rnt <= 14852.00:
         red20 = 7302.00
-    elif 14852.00 < rnt <= 17673.52:
-        red20 = 7302.00 - (1.75 * (rnt - 14852.00))
-    elif 17673.52 < rnt < 19747.50:
-        red20 = 2364.34 - (1.14 * (rnt - 17673.52))
+    elif rnt <= 17673.52:
+        red20 = 7302.00 - 1.75 * (rnt - 14852.00)
+    elif rnt < 19747.50:
+        red20 = 2364.34 - 1.14 * (rnt - 17673.52)
     else:
         red20 = 0.00
-        
-    red20 = redondear(red20) # Función REDONDEAR1 del documento
+    red20 = redondear(red20)
 
-    # 6. RENDIMIENTO NETO REDUCIDO (Página 22/23)
-    # RNTREDU = RNT - OTROSGASTOS - RED20
-    # Nota: RNT arriba lo calculé como (Bruto - SS). El algoritmo dice RNT = RETRIB - GASTOS. 
-    # Corrección estricta: RNT del algoritmo (pag 22) = Retrib - Reducciones irregulares - Cotizaciones.
-    # Luego RNTREDU = RNT - OtrosGastos (2000) - Red20.
-    
-    rnt_redu = rnt - otros_gastos - red20
-    if rnt_redu < 0: rnt_redu = 0
+    # RNTREDU (pág. 23)
+    rnt_redu = max(rnt - otros_gastos - red20, 0.0)
 
-    # 7. MÍNIMO PERSONAL Y FAMILIAR (Páginas 24 - 28)
-    # A. Mínimo del contribuyente
-    min_per = 5550.00
-    # Asumimos < 65 años para simplificar, o preguntar edad:
-    # edad = input_int("Tu edad: ") ... lógica 65PER
-    
-    # B. Mínimo por descendientes (Simplificado caso general)
+    # Mínimo por descendientes (pág. 24-25)
     min_des = 0.0
     for i in range(1, num_hijos + 1):
-        if i == 1: min_des += 2400.00
+        if   i == 1: min_des += 2400.00
         elif i == 2: min_des += 2700.00
         elif i == 3: min_des += 4000.00
-        else: min_des += 4500.00
-    
-    # Plus menores de 3 años
-    if hijos_menores_3 > 0:
-        min_des += (hijos_menores_3 * 2800.00)
-        
-    # C. Mínimo ascendientes
-    min_as = 0.0
-    if ascendientes_mayores_65 > 0:
-        min_as += (ascendientes_mayores_65 * 1150.00) # Asumimos >65 y <75. Si >75 es 1150+1400.
+        else:        min_des += 4500.00
+    min_des += hijos_men_3 * 2800.00   # plus < 3 años
+    min_des = redondear(min_des)
 
-    # Total Mínimo Personal y Familiar (MINPERFA)
-    # Asumimos sin discapacidad para simplificar, salvo que se añada la lógica
-    min_per_fa = min_per + min_des + min_as 
-    
-    # 8. BASE PARA CALCULAR EL TIPO (Página 29)
-    # BASE = RNTREDU - Reducciones (Pensión, Hijos, etc. asumimos 0)
-    base_calculo = rnt_redu
-    if base_calculo < 0: base_calculo = 0
+    # Mínimo por ascendientes (pág. 25-26)
+    min_as = redondear((asc_65_74 + asc_75) * 1150.00 + asc_75 * 1400.00)
 
-    # 9. CUOTA DE RETENCIÓN (Página 29-31)
-    # A. Límites excluyentes (Página 29 - Tabla 1)
-    # Simplificación de la lógica de exclusión
-    limite_excluyente = 0
+    # MINPERFA total (pág. 28)
+    min_per_fa = min_con + min_des + min_as
+
+    # Reducciones adicionales (pág. 23)
+    redu_hijos = 600.00 if num_hijos > 2 else 0.00  # más de 2 descendientes
+    redu = redu_hijos  # (PENSION y DESEM se añadirían si se implementa SITUPER)
+
+    # BASE (pág. 29)
+    base_calculo = max(rnt_redu - redu, 0.0)
+
+    # ── Límites excluyentes (Tabla 1, pág. 29) ────────────────────────────────
     if situacion == 1:
-        limite_excluyente = 17644 if num_hijos <= 1 else 18694
+        lim_ex = 17644 if num_hijos <= 1 else 18694
     elif situacion == 2:
-        if num_hijos == 0: limite_excluyente = 17197
-        elif num_hijos == 1: limite_excluyente = 18130
-        else: limite_excluyente = 19262
-    else: # Situacion 3
-        if num_hijos == 0: limite_excluyente = 15876
-        elif num_hijos == 1: limite_excluyente = 16342
-        else: limite_excluyente = 16867
-        
-    es_exento = False
-    if retribuciones_totales <= limite_excluyente:
-        es_exento = True
-        cuota_final = 0.0
-        tipo_final = 0.0
+        lim_ex = {0: 17197, 1: 18130}.get(num_hijos, 19262)
     else:
-        # B. Cálculo de Cuotas (Página 31)
-        # Cuota 1 = Escala(Base)
-        cuota_1 = calcular_escala(base_calculo)
-        
-        # Cuota 2 = Escala(Mínimo Personal y Familiar)
-        cuota_2 = calcular_escala(min_per_fa)
-        
-        # Cuota Líquida
-        cuota_final = cuota_1 - cuota_2
-        if cuota_final < 0: cuota_final = 0.0
-        
-        # Límite del 43% (Art 85.3 RIRPF)
-        # Si retrib <= 35.200, la cuota tiene un techo máximo
-        if retribuciones_totales <= 35200.00:
-            limite_43 = (retribuciones_totales - limite_excluyente) * 0.43
-            if cuota_final > limite_43:
-                cuota_final = limite_43
+        lim_ex = {0: 15876, 1: 16342}.get(num_hijos, 16867)
 
-        # 10. TIPO DE RETENCIÓN (Página 33)
-        # Tipo = (Cuota / Retribuciones) * 100
-        tipo_calculado = (cuota_final / retribuciones_totales) * 100
-        tipo_truncado = truncar(tipo_calculado) # Se trunca a 2 decimales
-        
-        # Mínimos por contrato (Página 33)
-        tipo_final = tipo_truncado
-        if tipo_contrato == 'T': # Inferior a un año
-            if tipo_final < 2.00:
-                tipo_final = 2.00
-        
-        # Máximo legal general
+    if retribuciones_totales <= lim_ex:
+        cuota_final = 0.0
+        tipo_final  = 0.0
+        es_exento   = True
+    else:
+        es_exento = False
+        cuota_1 = calcular_escala(base_calculo)
+        cuota_2 = calcular_escala(min_per_fa)
+        cuota_final = max(cuota_1 - cuota_2, 0.0)
+
+        # Límite del 43% (art. 85.3 RIRPF)
+        if retribuciones_totales <= 35200.00:
+            limite_43 = (retribuciones_totales - lim_ex) * 0.43
+            cuota_final = min(cuota_final, limite_43)
+
+        # Tipo de retención (pág. 33)
+        tipo_final = truncar((cuota_final / retribuciones_totales) * 100)
+
+        if tipo_contrato == 'T' and tipo_final < 2.00:
+            tipo_final = 2.00
         if tipo_final > 47.00:
             tipo_final = 47.00
 
-    # 11. CÁLCULO FINAL IMPORTE (Página 33)
-    importe_anual_retencion = (retribuciones_totales * tipo_final) / 100
-    importe_anual_retencion = redondear(importe_anual_retencion)
-    
-    salario_neto_anual = retribuciones_totales - gastos_ss - importe_anual_retencion
-    salario_neto_mensual_12 = salario_neto_anual / 12
-    salario_neto_mensual_14 = salario_neto_anual / 14
+    # Importe y neto
+    importe_retencion   = redondear((retribuciones_totales * tipo_final) / 100)
+    salario_neto_anual  = retribuciones_totales - gastos_ss - importe_retencion
+    neto_12             = salario_neto_anual / 12
+    neto_14             = salario_neto_anual / 14
 
-    # --- RESULTADOS ---
-    print("\n" + "="*40)
-    print(f"      RESULTADOS ESTIMADOS 2025")
-    print("="*40)
-    print(f"Salario Bruto Anual:      {retribuciones_totales:10.2f} €")
-    print(f"Seguridad Social (est.):  -{gastos_ss:9.2f} €")
-    print(f"IRPF Anual ({tipo_final:.2f}%):      -{importe_anual_retencion:9.2f} €")
-    print("-" * 40)
-    print(f"SALARIO NETO ANUAL:       {salario_neto_anual:10.2f} €")
-    print("="*40)
-    print(f"Neto Mensual (12 pagas):  {salario_neto_mensual_12:10.2f} €")
-    print(f"Neto Mensual (14 pagas):  {salario_neto_mensual_14:10.2f} €")
-    print("\nNOTA: Estos cálculos son una estimación basada en el algoritmo")
-    print("general (Enero-Nov 2025). No incluye regularizaciones por pagos")
-    print("de hipoteca (anteriores a 2013), pensiones compensatorias, etc.")
-    print("Revisa tu nómina oficial para el dato exacto.")
+    # ═════════════════════════════════════════════════════════════════════════
+    #  RESULTADOS
+    # ═════════════════════════════════════════════════════════════════════════
+    print()
+    print("╔══════════════════════════════════════════════════════╗")
+    print("║              RESULTADOS ESTIMADOS 2026               ║")
+    print("╚══════════════════════════════════════════════════════╝")
+
+    # Desglose del cálculo
+    seccion("Desglose del cálculo")
+    linea("Salario bruto anual",          f"{retribuciones_totales:,.2f} €")
+    linea("Cotizaciones S.S.",            f"{gastos_ss:,.2f} €",        "−")
+    linea("Otros gastos deducibles",      f"{otros_gastos:,.2f} €",     "−")
+    print(f"  {'─'*46}")
+    linea("Rendimiento neto del trabajo", f"{rnt:,.2f} €")
+    linea("Reducción art. 20 (RED20)",    f"{red20:,.2f} €",            "−")
+    print(f"  {'─'*46}")
+    linea("Rendimiento neto reducido",    f"{rnt_redu:,.2f} €")
+    if redu > 0:
+        linea("Reducción adicional (>2 hijos)", f"{redu:,.2f} €",      "−")
+    linea("BASE de retención",            f"{base_calculo:,.2f} €")
+    print()
+    linea("Mínimo personal (MINCON)",     f"{min_con:,.2f} €")
+    if min_des > 0:
+        linea("  · Por descendientes",    f"{min_des:,.2f} €")
+    if min_as > 0:
+        linea("  · Por ascendientes",     f"{min_as:,.2f} €")
+    linea("Mínimo personal y familiar",   f"{min_per_fa:,.2f} €")
+
+    # Resultado final
+    seccion("Resultado final")
+    if es_exento:
+        print("  ✓ Rentas EXENTAS de retención según tabla de límites AEAT.")
+        print(f"  (Tu salario {retribuciones_totales:,.2f} € no supera el límite de {lim_ex:,} €)\n")
+
+    linea("Salario bruto anual",          f"{retribuciones_totales:,.2f} €")
+    linea("Cotizaciones S.S.",            f"{gastos_ss:,.2f} €",        "−")
+    linea(f"Retención IRPF ({tipo_final:.2f} %)",  f"{importe_retencion:,.2f} €", "−")
+    print(f"  {'═'*46}")
+    print(f"  {'SALARIO NETO ANUAL:':<32} {salario_neto_anual:>12,.2f} €")
+    print(f"  {'═'*46}")
+    print()
+    linea("Neto mensual (12 pagas)",      f"{neto_12:,.2f} €")
+    linea("Neto mensual (14 pagas)",      f"{neto_14:,.2f} €")
+
+    print()
+    print("  NOTA: Estimación basada en el algoritmo oficial AEAT 2026.")
+    print("  No incluye regularizaciones, pensiones compensatorias,")
+    print("  discapacidad ni anualidades por alimentos. Consulta tu")
+    print("  nómina o asesor fiscal para el dato definitivo.")
+    print()
 
 if __name__ == "__main__":
     main()
